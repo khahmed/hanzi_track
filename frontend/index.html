@@ -125,6 +125,16 @@
     </p>
   </section>
 
+  <section x-show="view === 'agent' && currentAgent" x-cloak>
+    <div class="sticky top-0 bg-slate-50 z-10 p-3 border-b border-slate-200">
+      <h2 class="text-lg font-semibold" x-text="currentAgent?.display_name"></h2>
+      <p class="text-xs text-slate-500" x-text="currentAgent ? currentAgent.provider + ' · ' + currentAgent.model : ''"></p>
+    </div>
+    <div class="p-6 text-center text-slate-500 text-sm">
+      <span x-text="currentAgent?.display_name"></span> coming soon.
+    </div>
+  </section>
+
   <div x-show="modal" x-cloak class="fixed inset-0 z-20" @keydown.escape.window="closeModal()">
     <div class="absolute inset-0 bg-black/40" @click="closeModal()"></div>
     <div class="absolute bottom-0 inset-x-0 bg-white rounded-t-2xl p-4 pb-8 max-h-[85vh] overflow-y-auto"
@@ -185,6 +195,12 @@
     <button @click="goBank()"
             :class="view === 'bank' ? 'text-blue-600' : 'text-slate-500'"
             class="flex-1 py-4 text-sm font-semibold transition-colors">Bank</button>
+    <template x-for="a in agents" :key="a.id">
+      <button @click="selectAgent(a)"
+              :class="view === 'agent' && currentAgent && currentAgent.id === a.id ? 'text-blue-600' : 'text-slate-500'"
+              class="flex-1 py-4 text-sm font-semibold transition-colors"
+              x-text="a.display_name"></button>
+    </template>
   </nav>
 
 </main>

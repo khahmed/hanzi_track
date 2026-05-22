@@ -131,7 +131,46 @@ CREATE TABLE IF NOT EXISTS mutation_jobs (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-4. Double-Loop Adaptive Architecture
+
+4. Multi-Agent Engine Core Logic (Go Engine Backend)
+
+The Go backend runs an agent layer utilizing system prompts that process relational database context into tailored LLM inputs.
+Plaintext
+
+               +----------------------------------------+
+               |            SQLite Database             |
+               | (Vocabulary, Review Logs, Categories)  |
+               +----------------------------------------+
+                                   |
+                                   v
+               +----------------------------------------+
+               |        Go Agent Manager Router         |
+               +----------------------------------------+
+                /                  |                   \
+               /                   |                    \
+              v                    v                     v
+   +--------------------+  +--------------------+  +--------------------+
+   |    Quizmaster      |  |   Conversational   |  | Linguistic Copilot |
+   |    Agent Core      |  |   Partner Agent    |  |     Agent Core     |
+   | (Structural Slots) |  | (Bilingual Engine) |  | (Grammar Monitor)  |
+   +--------------------+  +--------------------+  +--------------------+
+
+Agent A: The Quizmaster
+
+    System Prompt Target: "You are an expert Chinese pedagogy teacher specializing in syntactic frame structures. Your task is to use the user's provided list of learned vocabulary words to construct fill-in-the-blank structural questions."
+
+    Context Payload: Pulls an array of words from vocabulary matching a chosen category filter, paired with historical metrics from review_logs.
+
+    Execution Strategy: Builds a sentence skeleton around common structural skeletons (e.g., 虽然...但是..., 一边...一边..., Subject + Time + Place + Verb). It sends a JSON output pattern back containing the sentence question, the answer options, and the matching index mapping keys.
+
+Agent B: The Conversational Partner & Linguistic Copilot (Combined Pipeline)
+
+    System Prompt Target: "You function as a dual-role language environment. Primary Persona (Conversational Partner): Speak entirely in natural, simple Mandarin Chinese matching a target situation (e.g., booking a room, buying food). You must limit your sentence structures and vocabulary complexity to the user's logged dataset. Secondary Persona (Linguistic Copilot): Append an independent, bracketed analysis block translating advanced idioms, flagging tone adjustments, and noting corrections without interrupting the flow of dialogue."
+
+    Context Payload: Pulls all rows from vocabulary along with the last 10 records from chat_messages.
+
+
+5. Double-Loop Adaptive Architecture
 
 The application implements two entirely distinct adaptive loops running in parallel:
 Loop 1: The Pedagogical Learning Loop (Orchestrator)
@@ -169,7 +208,7 @@ Plaintext
    | 6. Returns code link to client   |                +----------------------------------+
    +----------------------------------+
 
-5. System API Endpoints (Backend Blueprint for Claude Code)
+6. System API Endpoints (Backend Blueprint for Claude Code)
 Core Base Handlers
 
     GET / -> Serves frontend/index.html.
@@ -179,6 +218,22 @@ Core Base Handlers
     POST /api/vocab -> Saves a new word to track.
 
     GET /api/vocab -> Retrieves vocabulary bank tracking rows.
+
+    GET /api/agents/quiz?category=Food -> Queries the Quizmaster Agent. Returns a dynamically generated structural sentence question array:
+    JSON
+
+    {
+      "structure": "一边...一边...",
+      "question_chinese": "他喜欢一边____，一边听音乐。",
+      "options": ["吃饭", "苹果", "学校", "昨天"],
+      "correct_answer": "吃饭",
+      "vocab_id": 42,
+      "explanation": "吃饭 (chīfàn - to eat) fits the blank as a verb action happening concurrently with listening to music."
+    }
+
+    POST /api/agents/quiz/submit -> Submits user selection and records results to review_logs.
+
+    POST /api/agents/chat -> Receives messages from the interactive chat terminal. Communicates with your LLM engine using a streaming or clean text payload response that separates the Chinese dialogue response, the computed Pinyin layout string, and the accompanying Coach notes block.
 
 Dynamic Agent Engine Routes
 

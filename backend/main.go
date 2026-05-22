@@ -33,6 +33,7 @@ func main() {
 	mux.HandleFunc("POST /api/vocab", vocab.Post)
 	mux.HandleFunc("GET /api/vocab", vocab.List)
 	mux.HandleFunc("GET /api/categories", vocab.Categories)
+	mux.HandleFunc("GET /api/agents", handlers.ListAgents(database))
 	// Static assets last — /api routes are more specific patterns and win in ServeMux.
 	mux.Handle("/", http.FileServer(http.Dir(*frontendDir)))
 

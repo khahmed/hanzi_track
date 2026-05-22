@@ -29,12 +29,18 @@ function app() {
     bankResults: [],
     _bankLoaded: false,
 
+    // Dynamic agent tabs. agents[] is populated from /api/agents on init.
+    // When an agent tab is active, view === 'agent' and currentAgent holds
+    // the row. Slices 2/3 replace the placeholder pane with real content.
+    agents: [],
+    currentAgent: null,
+
     toast: '',
     _toastTimer: null,
 
     async init() {
       try {
-        await Promise.all([this.loadCategories(), this.loadRecent()]);
+        await Promise.all([this.loadCategories(), this.loadRecent(), this.loadAgents()]);
       } catch (e) {
         this.flashToast('Failed to load: ' + e.message);
       }
@@ -44,6 +50,17 @@ function app() {
       const r = await fetch('/api/categories');
       if (!r.ok) throw new Error('categories HTTP ' + r.status);
       this.allCategories = (await r.json()).results || [];
+    },
+
+    async loadAgents() {
+      const r = await fetch('/api/agents');
+      if (!r.ok) throw new Error('agents HTTP ' + r.status);
+      this.agents = (await r.json()).results || [];
+    },
+
+    selectAgent(agent) {
+      this.view = 'agent';
+      this.currentAgent = agent;
     },
 
     async loadRecent() {
