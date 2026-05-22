@@ -1,0 +1,9 @@
+.env
+.env.local
+*.env.local
+
+# Runtime SQLite state — schema is regenerated from db/schema.sql; the DB
+# itself shouldn't have been tracked. Existing tracked copies stay tracked
+# until removed explicitly, but new clones won't pick these up.
+data/hanzitrack.db-shm
+data/hanzitrack.db-wal
