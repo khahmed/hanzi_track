@@ -35,6 +35,16 @@ function app() {
     agents: [],
     currentAgent: null,
 
+    // Quizmaster pane state. quiz holds the current question payload from
+    // /api/agents/quiz; quizChoice is the user's pick (null = unanswered);
+    // quizCorrect is set after submit so the UI can colour the chosen option.
+    quizCategory: '',
+    quiz: null,
+    quizLoading: false,
+    quizChoice: null,
+    quizCorrect: null,
+    quizError: '',
+
     toast: '',
     _toastTimer: null,
 
@@ -61,6 +71,63 @@ function app() {
     selectAgent(agent) {
       this.view = 'agent';
       this.currentAgent = agent;
+      this.resetQuiz();
+    },
+
+    resetQuiz() {
+      this.quiz = null;
+      this.quizChoice = null;
+      this.quizCorrect = null;
+      this.quizError = '';
+    },
+
+    // quizQuestionParts splits question_chinese on "____" so the template
+    // can render the blank as a stylised slot rather than inline underscores.
+    quizQuestionParts() {
+      if (!this.quiz) return ['', ''];
+      const parts = this.quiz.question_chinese.split('____');
+      return [parts[0] || '', parts.slice(1).join('____')];
+    },
+
+    async generateQuiz() {
+      if (this.quizLoading) return;
+      this.resetQuiz();
+      this.quizLoading = true;
+      try {
+        const params = new URLSearchParams();
+        if (this.quizCategory) params.set('category', this.quizCategory);
+        const r = await fetch('/api/agents/quiz?' + params.toString());
+        if (!r.ok) {
+          const msg = await r.text();
+          this.quizError = msg || ('quiz HTTP ' + r.status);
+          return;
+        }
+        this.quiz = await r.json();
+      } catch (e) {
+        this.quizError = e.message;
+      } finally {
+        this.quizLoading = false;
+      }
+    },
+
+    async pickQuizOption(opt) {
+      if (!this.quiz || this.quizChoice !== null) return;
+      this.quizChoice = opt;
+      const isCorrect = opt === this.quiz.correct_answer;
+      this.quizCorrect = isCorrect;
+      try {
+        await fetch('/api/agents/quiz/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            vocab_id: this.quiz.vocab_id,
+            quiz_type: 'structural_fill',
+            is_correct: isCorrect,
+          }),
+        });
+      } catch (e) {
+        console.error('quiz submit:', e);
+      }
     },
 
     async loadRecent() {

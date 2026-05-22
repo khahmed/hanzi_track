@@ -130,7 +130,64 @@
       <h2 class="text-lg font-semibold" x-text="currentAgent?.display_name"></h2>
       <p class="text-xs text-slate-500" x-text="currentAgent ? currentAgent.provider + ' · ' + currentAgent.model : ''"></p>
     </div>
-    <div class="p-6 text-center text-slate-500 text-sm">
+
+    <!-- Quizmaster: structural fill-in-the-blank loop. -->
+    <div x-show="currentAgent?.name === 'quizmaster'" class="p-3 space-y-3">
+      <div class="bg-white rounded-xl border border-slate-200 p-3">
+        <label class="block text-xs uppercase tracking-wide text-slate-500 font-semibold mb-2">Category</label>
+        <select x-model="quizCategory" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm">
+          <option value="">All words</option>
+          <template x-for="cat in allCategories" :key="cat">
+            <option :value="cat" x-text="cat"></option>
+          </template>
+        </select>
+        <button @click="generateQuiz()" :disabled="quizLoading"
+                class="w-full mt-3 px-4 py-3 rounded-xl bg-blue-600 text-white font-medium disabled:opacity-50">
+          <span x-show="!quizLoading && !quiz">Generate question</span>
+          <span x-show="!quizLoading && quiz">Next question</span>
+          <span x-show="quizLoading">Generating…</span>
+        </button>
+        <p x-show="quizError" x-cloak class="mt-2 text-xs text-red-600" x-text="quizError"></p>
+      </div>
+
+      <div x-show="quiz" x-cloak class="bg-white rounded-xl border border-slate-200 p-4 space-y-4">
+        <div class="text-xs uppercase tracking-wide text-slate-500 font-semibold" x-text="quiz?.structure"></div>
+        <div class="text-2xl leading-relaxed">
+          <span x-text="quizQuestionParts()[0]"></span><span
+            class="inline-block min-w-[3.5rem] px-2 mx-1 border-b-2 border-blue-400 text-center"
+            x-text="quizChoice ?? '____'"
+            :class="quizChoice ? (quizCorrect ? 'text-green-700 border-green-500' : 'text-red-700 border-red-500') : 'text-slate-400'"></span><span
+            x-text="quizQuestionParts()[1]"></span>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <template x-for="opt in quiz?.options || []" :key="opt">
+            <button @click="pickQuizOption(opt)" :disabled="quizChoice !== null"
+                    class="px-4 py-3 rounded-lg border text-base font-medium transition-colors"
+                    :class="
+                      quizChoice === null
+                        ? 'bg-slate-50 border-slate-300 hover:bg-slate-100'
+                        : opt === quiz.correct_answer
+                          ? 'bg-green-50 border-green-500 text-green-800'
+                          : opt === quizChoice
+                            ? 'bg-red-50 border-red-500 text-red-800'
+                            : 'bg-slate-50 border-slate-200 text-slate-500'
+                    "
+                    x-text="opt"></button>
+          </template>
+        </div>
+        <div x-show="quizChoice !== null" x-cloak class="text-sm text-slate-700 border-t border-slate-100 pt-3">
+          <span x-show="quizCorrect" class="font-medium text-green-700">Correct.</span>
+          <span x-show="!quizCorrect" class="font-medium text-red-700">
+            Not quite — answer: <span x-text="quiz?.correct_answer"></span>.
+          </span>
+          <p class="text-slate-600 mt-1" x-text="quiz?.explanation"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Non-quizmaster agents: keep the placeholder until their slice lands. -->
+    <div x-show="currentAgent && currentAgent.name !== 'quizmaster'"
+         class="p-6 text-center text-slate-500 text-sm">
       <span x-text="currentAgent?.display_name"></span> coming soon.
     </div>
   </section>

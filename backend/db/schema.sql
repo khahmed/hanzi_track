@@ -59,6 +59,21 @@ CREATE TABLE IF NOT EXISTS system_agents (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Quiz history. Feeds two things: (1) the Orchestrator (Loop 1) when it
+-- rewrites system prompts, (2) the per-word accuracy payload the Quizmaster
+-- ships to the LLM so it can pick weaker words. agent_type matches the
+-- system_agents.name string of the agent that initiated the test.
+CREATE TABLE IF NOT EXISTS review_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vocab_id INTEGER,
+    agent_type TEXT NOT NULL,
+    quiz_type TEXT NOT NULL,
+    is_correct INTEGER NOT NULL,
+    reviewed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(vocab_id) REFERENCES vocabulary(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_review_logs_vocab ON review_logs(vocab_id);
+
 -- Seed the two SPEC §4 agents. INSERT OR IGNORE is keyed on the UNIQUE
 -- name column, so user edits to system_prompt/temperature survive restarts.
 INSERT OR IGNORE INTO system_agents (name, display_name, system_prompt, temperature, provider, model) VALUES
