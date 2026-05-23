@@ -31,15 +31,29 @@ func main() {
 	}
 
 	// LLM registry: start with stubs for all three providers so any agent
-	// can at least respond with a placeholder. If DEEPSEEK_API_KEY is set,
-	// swap the deepseek slot for the real client. Missing key is a warning,
-	// not a fatal — agents fail at request time, not boot time.
+	// can at least respond with a placeholder. For each provider, if the
+	// matching env var is set, swap the stub for the real client. Missing
+	// keys are warnings, not fatal — agents fail at request time, not boot
+	// time, so an unconfigured provider only matters if an agent is wired
+	// to use it.
 	registry := llm.DefaultRegistry()
 	if key := os.Getenv("DEEPSEEK_API_KEY"); key != "" {
 		registry.Register("deepseek", llm.NewDeepSeek(key))
 		log.Printf("deepseek: live client registered")
 	} else {
 		log.Printf("deepseek: DEEPSEEK_API_KEY not set — using stub client")
+	}
+	if key := os.Getenv("OPENAI_API_KEY"); key != "" {
+		registry.Register("openai", llm.NewOpenAI(key))
+		log.Printf("openai: live client registered")
+	} else {
+		log.Printf("openai: OPENAI_API_KEY not set — using stub client")
+	}
+	if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
+		registry.Register("anthropic", llm.NewAnthropic(key))
+		log.Printf("anthropic: live client registered")
+	} else {
+		log.Printf("anthropic: ANTHROPIC_API_KEY not set — using stub client")
 	}
 
 	quiz := &handlers.Quiz{DB: database, Registry: registry}
