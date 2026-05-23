@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 
+	"hanzitrack/backend/agents"
 	"hanzitrack/backend/db"
 	"hanzitrack/backend/handlers"
 	"hanzitrack/backend/llm"
@@ -58,6 +59,7 @@ func main() {
 
 	quiz := &handlers.Quiz{DB: database, Registry: registry}
 	chat := &handlers.Chat{DB: database, Registry: registry}
+	orch := &agents.Orchestrator{DB: database, Registry: registry}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/dict/search", handlers.DictSearch(database))
@@ -69,6 +71,8 @@ func main() {
 	mux.HandleFunc("POST /api/agents/quiz/submit", quiz.Submit)
 	mux.HandleFunc("POST /api/agents/chat", chat.Send)
 	mux.HandleFunc("GET /api/agents/chat/history", chat.History)
+	mux.HandleFunc("GET /api/agents/stats", handlers.Stats(orch))
+	mux.HandleFunc("POST /api/agents/orchestrate", handlers.Orchestrate(orch))
 	// Static assets last — /api routes are more specific patterns and win in ServeMux.
 	mux.Handle("/", http.FileServer(http.Dir(*frontendDir)))
 

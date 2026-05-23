@@ -54,6 +54,14 @@ function app() {
     chatError: '',
     chatHistoryLoaded: false,
 
+    // Orchestrator pane state. agentStats is loaded from /api/agents/stats
+    // when entering an agent tab; orchestrating tracks the POST lifecycle.
+    agentStats: [],
+    agentStatsLoaded: false,
+    orchestrating: false,
+    orchResult: null,
+    orchError: '',
+
     toast: '',
     _toastTimer: null,
 
@@ -81,6 +89,7 @@ function app() {
       this.view = 'agent';
       this.currentAgent = agent;
       this.resetQuiz();
+      this.loadAgentStats();
       if (agent.name === 'conversationalist' && !this.chatHistoryLoaded) {
         this.loadChatHistory();
       }
@@ -157,6 +166,65 @@ function app() {
       this.quizChoice = null;
       this.quizCorrect = null;
       this.quizError = '';
+    },
+
+    async loadAgentStats() {
+      this.agentStatsLoaded = false;
+      this.orchResult = null;
+      this.orchError = '';
+      try {
+        const r = await fetch('/api/agents/stats');
+        if (!r.ok) throw new Error('stats HTTP ' + r.status);
+        this.agentStats = (await r.json()).results || [];
+      } catch (e) {
+        console.error(e);
+      } finally {
+        this.agentStatsLoaded = true;
+      }
+    },
+
+    // Returns the stats row for the currently selected agent, or null.
+    agentStatsForCurrent() {
+      if (!this.currentAgent) return null;
+      return this.agentStats.filter(s => s.agent_type === this.currentAgent.name)[0] || null;
+    },
+
+    // Color and arrow for the stats badge. Green for >80%, amber between, red for <60%.
+    statsBadge(stats) {
+      if (!stats || stats.total === 0) return {color: 'text-slate-400', label: '—', arrow: ''};
+      const pct = Math.round(stats.pct_correct * 100);
+      const arrow = stats.trend === 'improving' ? '↑' : stats.trend === 'declining' ? '↓' : '→';
+      const color = pct >= 80 ? 'text-green-600' : pct >= 60 ? 'text-amber-600' : 'text-red-600';
+      return {color, label: pct + '%', arrow};
+    },
+
+    async runOrchestrate() {
+      if (this.orchestrating) return;
+      this.orchestrating = true;
+      this.orchResult = null;
+      this.orchError = '';
+      try {
+        const r = await fetch('/api/agents/orchestrate', { method: 'POST' });
+        if (!r.ok) {
+          const msg = await r.text();
+          this.orchError = msg || ('orchestrate HTTP ' + r.status);
+          return;
+        }
+        this.orchResult = await r.json();
+        // Refresh stats after orchestration.
+        await this.loadAgentStats();
+        this.flashToast('Prompts tuned — check the results below');
+      } catch (e) {
+        this.orchError = e.message;
+      } finally {
+        this.orchestrating = false;
+      }
+    },
+
+    // Returns the change entry for the current agent, if any.
+    orchChangeForCurrent() {
+      if (!this.orchResult || !this.currentAgent) return null;
+      return this.orchResult.changes.filter(c => c.agent_name === this.currentAgent.name)[0] || null;
     },
 
     // quizQuestionParts splits question_chinese on "____" so the template

@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+
+	"hanzitrack/backend/agents"
 )
 
 // Agent is the wire shape returned by GET /api/agents. Mirrors the
@@ -57,5 +59,33 @@ func ListAgents(database *sql.DB) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, listAgentsResponse{Results: results})
+	}
+}
+
+// Stats handles GET /api/agents/stats — returns accuracy data grouped by
+// agent_type and quiz_type from the Orchestrator engine.
+func Stats(orch *agents.Orchestrator) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		stats, err := orch.Stats(r.Context())
+		if err != nil {
+			log.Printf("stats: %v", err)
+			http.Error(w, "stats failed", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, map[string]any{"results": stats})
+	}
+}
+
+// Orchestrate handles POST /api/agents/orchestrate — triggers the
+// Orchestrator to analyze review_logs and rewrite agent prompts.
+func Orchestrate(orch *agents.Orchestrator) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		result, err := orch.Orchestrate(r.Context())
+		if err != nil {
+			log.Printf("orchestrate: %v", err)
+			http.Error(w, "orchestration failed", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, result)
 	}
 }

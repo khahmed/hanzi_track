@@ -127,9 +127,42 @@
 
   <section x-show="view === 'agent' && currentAgent" x-cloak>
     <div class="sticky top-0 bg-slate-50 z-10 p-3 border-b border-slate-200">
-      <h2 class="text-lg font-semibold" x-text="currentAgent?.display_name"></h2>
-      <p class="text-xs text-slate-500" x-text="currentAgent ? currentAgent.provider + ' · ' + currentAgent.model : ''"></p>
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-semibold" x-text="currentAgent?.display_name"></h2>
+          <p class="text-xs text-slate-500" x-text="currentAgent ? currentAgent.provider + ' · ' + currentAgent.model : ''"></p>
+        </div>
+        <div class="flex items-center gap-3">
+          <!-- Stats badge -->
+          <template x-if="agentStatsLoaded">
+            <span :class="statsBadge(agentStatsForCurrent()).color"
+                  class="text-xs font-semibold whitespace-nowrap"
+                  x-text="statsBadge(agentStatsForCurrent()).label + ' ' + statsBadge(agentStatsForCurrent()).arrow"></span>
+          </template>
+          <!-- Auto-tune button -->
+          <button @click="runOrchestrate()" :disabled="orchestrating"
+                  class="text-xs font-medium text-blue-600 hover:text-blue-800 disabled:text-slate-400 disabled:cursor-not-allowed">
+            <span x-show="!orchestrating">Auto-tune</span>
+            <span x-show="orchestrating">Tuning…</span>
+          </button>
+        </div>
+      </div>
     </div>
+
+    <!-- Orchestration result banner (shown after Auto-tune completes). -->
+    <div x-show="orchChangeForCurrent()" x-cloak class="mx-3 mt-3 p-3 rounded-xl border text-sm"
+         :class="orchChangeForCurrent()?.changed ? 'bg-blue-50 border-blue-200 text-blue-800' : 'bg-slate-50 border-slate-200 text-slate-600'">
+      <template x-if="orchChangeForCurrent()?.changed">
+        <div>
+          <p class="font-medium">Prompt tuned</p>
+          <p class="text-xs mt-1" x-text="orchChangeForCurrent()?.new_prompt"></p>
+        </div>
+      </template>
+      <template x-if="!orchChangeForCurrent()?.changed">
+        <p>No changes needed — performance is balanced.</p>
+      </template>
+    </div>
+    <div x-show="orchError" x-text="orchError" class="mx-3 mt-3 text-xs text-red-600"></div>
 
     <!-- Quizmaster: structural fill-in-the-blank loop. -->
     <div x-show="currentAgent?.name === 'quizmaster'" class="p-3 space-y-3">
