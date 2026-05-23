@@ -62,6 +62,12 @@ function app() {
     orchResult: null,
     orchError: '',
 
+    // Mutation Cockpit (Loop 2)
+    cockpitOpen: false,
+    featureDraft: '',
+    cockpitLogs: [],
+    cockpitRunning: false,
+
     toast: '',
     _toastTimer: null,
 
@@ -225,6 +231,85 @@ function app() {
     orchChangeForCurrent() {
       if (!this.orchResult || !this.currentAgent) return null;
       return this.orchResult.changes.filter(c => c.agent_name === this.currentAgent.name)[0] || null;
+    },
+
+    // ---- Mutation Cockpit (Loop 2) ----
+
+    toggleCockpit() {
+      this.cockpitOpen = !this.cockpitOpen;
+    },
+    closeCockpit() {
+      this.cockpitOpen = false;
+    },
+
+    async submitFeature() {
+      const desc = this.featureDraft.trim();
+      if (!desc || this.cockpitRunning) return;
+      this.cockpitRunning = true;
+      this.cockpitLogs = [];
+      this.featureDraft = '';
+      try {
+        const r = await fetch('/api/devops/mutate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'text/event-stream',
+          },
+          body: JSON.stringify({ feature_description: desc }),
+        });
+        if (!r.ok) {
+          this.cockpitLogs.push({ step: 'error', message: 'Request failed', detail: 'HTTP ' + r.status });
+          this.cockpitRunning = false;
+          return;
+        }
+        const reader = r.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let done = false;
+        while (!done) {
+          const { value, done: streamDone } = await reader.read();
+          done = streamDone;
+          buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+          const result = this._parseSSEBuffer(buffer);
+          buffer = result.remainder;
+          for (const ev of result.parsed) {
+            this.cockpitLogs.push(ev);
+          }
+          this.$nextTick(() => {
+            const el = document.getElementById('cockpit-log');
+            if (el) el.scrollTop = el.scrollHeight;
+          });
+        }
+      } catch (e) {
+        this.cockpitLogs.push({ step: 'error', message: 'Connection error', detail: e.message });
+      } finally {
+        this.cockpitRunning = false;
+      }
+    },
+
+    // Parses SSE buffer into parsed events and returns remainder.
+    _parseSSEBuffer(buffer) {
+      const parsed = [];
+      const parts = buffer.split('\n\n');
+      const remainder = parts.pop() || '';
+      for (const block of parts) {
+        if (!block.trim()) continue;
+        const lines = block.split('\n');
+        let event = 'message';
+        let data = '';
+        for (const line of lines) {
+          if (line.startsWith('event: ')) event = line.slice(7);
+          else if (line.startsWith('data: ')) data = line.slice(6);
+        }
+        if (data) {
+          try {
+            parsed.push({ step: event, ...JSON.parse(data) });
+          } catch (e) {
+            parsed.push({ step: event, data });
+          }
+        }
+      }
+      return { parsed, remainder };
     },
 
     // quizQuestionParts splits question_chinese on "____" so the template

@@ -9,6 +9,7 @@ import (
 
 	"hanzitrack/backend/agents"
 	"hanzitrack/backend/db"
+	"hanzitrack/backend/devops"
 	"hanzitrack/backend/handlers"
 	"hanzitrack/backend/llm"
 	"hanzitrack/backend/sentences"
@@ -57,9 +58,36 @@ func main() {
 		log.Printf("anthropic: ANTHROPIC_API_KEY not set — using stub client")
 	}
 
+	// Mutator LLM client — env-configurable. Defaults to anthropic so the
+	// self-mutation loop (Loop 2) uses the strongest model for code gen.
+	mutatorProvider := getEnv("MUTATOR_PROVIDER", "anthropic")
+	mutatorModel := getEnv("MUTATOR_MODEL", "claude-sonnet-4-20250514")
+	if key := os.Getenv("MUTATOR_API_KEY"); key != "" {
+		switch mutatorProvider {
+		case "anthropic":
+			registry.Register("mutator", llm.NewAnthropic(key))
+		case "openai":
+			registry.Register("mutator", llm.NewOpenAI(key))
+		case "deepseek":
+			registry.Register("mutator", llm.NewDeepSeek(key))
+		default:
+			log.Printf("mutator: unknown provider %q, falling back to stub", mutatorProvider)
+		}
+		log.Printf("mutator: live %s client registered", mutatorProvider)
+	} else {
+		log.Printf("mutator: MUTATOR_API_KEY not set — using stub client")
+	}
+
 	quiz := &handlers.Quiz{DB: database, Registry: registry}
 	chat := &handlers.Chat{DB: database, Registry: registry}
 	orch := &agents.Orchestrator{DB: database, Registry: registry}
+	mutator := &devops.Mutator{
+		DB:          database,
+		Registry:    registry,
+		FrontendDir: *frontendDir,
+		Provider:    mutatorProvider,
+		Model:       mutatorModel,
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/dict/search", handlers.DictSearch(database))
@@ -73,6 +101,7 @@ func main() {
 	mux.HandleFunc("GET /api/agents/chat/history", chat.History)
 	mux.HandleFunc("GET /api/agents/stats", handlers.Stats(orch))
 	mux.HandleFunc("POST /api/agents/orchestrate", handlers.Orchestrate(orch))
+	mux.HandleFunc("POST /api/devops/mutate", handlers.Mutate(mutator))
 	// Static assets last — /api routes are more specific patterns and win in ServeMux.
 	mux.Handle("/", http.FileServer(http.Dir(*frontendDir)))
 
@@ -80,4 +109,12 @@ func main() {
 	if err := http.ListenAndServe(*addr, mux); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// getEnv returns the env var value or a default if unset.
+func getEnv(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
 }

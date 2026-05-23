@@ -88,6 +88,16 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 );
 CREATE INDEX IF NOT EXISTS idx_chat_messages_created ON chat_messages(created_at);
 
+-- Self-mutation job audit trail (SPEC §3 / Loop 2).
+CREATE TABLE IF NOT EXISTS mutation_jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_request TEXT NOT NULL,
+    target_branch TEXT NOT NULL,
+    status TEXT NOT NULL,
+    error_log TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Seed the two SPEC §4 agents. INSERT OR IGNORE is keyed on the UNIQUE
 -- name column, so user edits to system_prompt/temperature survive restarts.
 INSERT OR IGNORE INTO system_agents (name, display_name, system_prompt, temperature, provider, model) VALUES
