@@ -185,8 +185,48 @@
       </div>
     </div>
 
-    <!-- Non-quizmaster agents: keep the placeholder until their slice lands. -->
-    <div x-show="currentAgent && currentAgent.name !== 'quizmaster'"
+    <!-- Conversationalist: bilingual dialogue + bracketed coach notes. -->
+    <div x-show="currentAgent?.name === 'conversationalist'" class="flex flex-col" style="height: calc(100vh - 8rem);">
+      <div id="chat-scroll" class="flex-1 overflow-y-auto p-3 space-y-3">
+        <p x-show="chatMessages.length === 0" class="text-center text-slate-500 text-sm pt-8">
+          Say hello in any language — the partner will reply in Mandarin.
+        </p>
+        <template x-for="m in chatMessages" :key="m.id">
+          <div>
+            <!-- User bubble -->
+            <div x-show="m.role === 'user'" class="flex justify-end">
+              <div class="max-w-[80%] bg-blue-600 text-white rounded-2xl rounded-br-sm px-4 py-2 text-sm" x-text="m.content"></div>
+            </div>
+            <!-- Assistant bubble: chinese / pinyin / coach notes stacked. -->
+            <div x-show="m.role === 'assistant'" class="flex justify-start">
+              <div class="max-w-[85%] bg-white border border-slate-200 rounded-2xl rounded-bl-sm px-4 py-3 space-y-1.5">
+                <div class="text-lg leading-snug" x-text="m.content"></div>
+                <div class="text-xs text-slate-500" x-text="toneMark(m.pinyin || '')"></div>
+                <div x-show="m.coach_notes" class="mt-2 pt-2 border-t border-slate-100 text-xs text-amber-800 bg-amber-50 -mx-4 -mb-3 px-4 py-2 rounded-b-2xl"
+                     x-text="m.coach_notes"></div>
+              </div>
+            </div>
+          </div>
+        </template>
+        <p x-show="chatSending" x-cloak class="text-xs text-slate-400 italic">partner is typing…</p>
+        <p x-show="chatError" x-cloak class="text-xs text-red-600" x-text="chatError"></p>
+      </div>
+      <form @submit.prevent="sendChat()" class="p-3 border-t border-slate-200 bg-white flex gap-2">
+        <input type="text" x-model="chatDraft"
+               :disabled="chatSending"
+               placeholder="Type a message…"
+               autocapitalize="off"
+               autocorrect="off"
+               class="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-sm" />
+        <button type="submit" :disabled="chatSending || !chatDraft.trim()"
+                class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium disabled:opacity-50">
+          Send
+        </button>
+      </form>
+    </div>
+
+    <!-- Other agents: keep the placeholder until their slice lands. -->
+    <div x-show="currentAgent && currentAgent.name !== 'quizmaster' && currentAgent.name !== 'conversationalist'"
          class="p-6 text-center text-slate-500 text-sm">
       <span x-text="currentAgent?.display_name"></span> coming soon.
     </div>

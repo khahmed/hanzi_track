@@ -45,6 +45,15 @@ function app() {
     quizCorrect: null,
     quizError: '',
 
+    // Conversationalist pane state. chatMessages is the full thread in
+    // chronological order; the assistant rows carry pinyin + coach_notes
+    // so each bubble can render its three stacked sections.
+    chatMessages: [],
+    chatDraft: '',
+    chatSending: false,
+    chatError: '',
+    chatHistoryLoaded: false,
+
     toast: '',
     _toastTimer: null,
 
@@ -72,6 +81,75 @@ function app() {
       this.view = 'agent';
       this.currentAgent = agent;
       this.resetQuiz();
+      if (agent.name === 'conversationalist' && !this.chatHistoryLoaded) {
+        this.loadChatHistory();
+      }
+    },
+
+    async loadChatHistory() {
+      try {
+        const r = await fetch('/api/agents/chat/history');
+        if (!r.ok) throw new Error('history HTTP ' + r.status);
+        this.chatMessages = (await r.json()).results || [];
+        this.chatHistoryLoaded = true;
+        this.$nextTick(() => this.scrollChatToEnd());
+      } catch (e) {
+        this.chatError = e.message;
+        console.error(e);
+      }
+    },
+
+    scrollChatToEnd() {
+      const el = document.getElementById('chat-scroll');
+      if (el) el.scrollTop = el.scrollHeight;
+    },
+
+    async sendChat() {
+      const text = this.chatDraft.trim();
+      if (!text || this.chatSending) return;
+      this.chatSending = true;
+      this.chatError = '';
+      // Optimistic user bubble — replaced by the server row after the
+      // round-trip lands (matched on user_id from the response).
+      const optimisticID = 'pending-' + Date.now();
+      this.chatMessages.push({ id: optimisticID, role: 'user', content: text });
+      this.chatDraft = '';
+      this.$nextTick(() => this.scrollChatToEnd());
+
+      try {
+        const r = await fetch('/api/agents/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text }),
+        });
+        if (!r.ok) {
+          const msg = await r.text();
+          this.chatError = msg || ('chat HTTP ' + r.status);
+          // Roll back the optimistic bubble.
+          this.chatMessages = this.chatMessages.filter(m => m.id !== optimisticID);
+          return;
+        }
+        const data = await r.json();
+        // Replace the optimistic row with the server-canonical one and
+        // append the assistant turn.
+        const idx = this.chatMessages.findIndex(m => m.id === optimisticID);
+        if (idx >= 0) {
+          this.chatMessages[idx] = { id: data.user_id, role: 'user', content: text };
+        }
+        this.chatMessages.push({
+          id: data.message_id,
+          role: 'assistant',
+          content: data.turn.chinese,
+          pinyin: data.turn.pinyin,
+          coach_notes: data.turn.coach_notes,
+        });
+        this.$nextTick(() => this.scrollChatToEnd());
+      } catch (e) {
+        this.chatError = e.message;
+        this.chatMessages = this.chatMessages.filter(m => m.id !== optimisticID);
+      } finally {
+        this.chatSending = false;
+      }
     },
 
     resetQuiz() {

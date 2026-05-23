@@ -74,6 +74,20 @@ CREATE TABLE IF NOT EXISTS review_logs (
 );
 CREATE INDEX IF NOT EXISTS idx_review_logs_vocab ON review_logs(vocab_id);
 
+-- Conversational chat history. role is "user" or "assistant"; pinyin and
+-- coach_notes are populated only on assistant rows (the dual-role linguistic
+-- copilot per SPEC §4 Agent B). The last 10 rows here are fed back into
+-- every chat call as recent context.
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    pinyin TEXT,
+    coach_notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_created ON chat_messages(created_at);
+
 -- Seed the two SPEC §4 agents. INSERT OR IGNORE is keyed on the UNIQUE
 -- name column, so user edits to system_prompt/temperature survive restarts.
 INSERT OR IGNORE INTO system_agents (name, display_name, system_prompt, temperature, provider, model) VALUES

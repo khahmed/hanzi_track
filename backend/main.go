@@ -43,6 +43,7 @@ func main() {
 	}
 
 	quiz := &handlers.Quiz{DB: database, Registry: registry}
+	chat := &handlers.Chat{DB: database, Registry: registry}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/dict/search", handlers.DictSearch(database))
@@ -52,6 +53,8 @@ func main() {
 	mux.HandleFunc("GET /api/agents", handlers.ListAgents(database))
 	mux.HandleFunc("GET /api/agents/quiz", quiz.Generate)
 	mux.HandleFunc("POST /api/agents/quiz/submit", quiz.Submit)
+	mux.HandleFunc("POST /api/agents/chat", chat.Send)
+	mux.HandleFunc("GET /api/agents/chat/history", chat.History)
 	// Static assets last — /api routes are more specific patterns and win in ServeMux.
 	mux.Handle("/", http.FileServer(http.Dir(*frontendDir)))
 
