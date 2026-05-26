@@ -184,16 +184,28 @@
       </div>
 
       <div x-show="quiz" x-cloak class="bg-white rounded-xl border border-slate-200 p-4 space-y-4">
-        <div class="text-xs uppercase tracking-wide text-slate-500 font-semibold" x-text="quiz?.structure"></div>
-        <div class="text-2xl leading-relaxed">
+        <div class="flex items-center justify-between">
+          <div class="text-xs uppercase tracking-wide text-slate-500 font-semibold" x-text="quiz?.structure"></div>
+          <!-- NEW: toggle pinyin button -->
+          <button @click="toggleQuizPinyin()"
+                  class="text-xs text-blue-600 hover:text-blue-800"
+                  x-text="quizShowPinyin ? 'Show Hanzi' : 'Show Pinyin'"></button>
+        </div>
+        <!-- Hanzi question (split) when pinyin is not shown or pinyin not available -->
+        <div x-show="!quizShowPinyin || !quiz?.question_pinyin" class="text-2xl leading-relaxed">
           <span x-text="quizQuestionParts()[0]"></span><span
             class="inline-block min-w-[3.5rem] px-2 mx-1 border-b-2 border-blue-400 text-center"
             x-text="quizChoice ?? '____'"
             :class="quizChoice ? (quizCorrect ? 'text-green-700 border-green-500' : 'text-red-700 border-red-500') : 'text-slate-400'"></span><span
             x-text="quizQuestionParts()[1]"></span>
         </div>
+        <!-- Pinyin question (full) when toggled and available -->
+        <div x-show="quizShowPinyin && quiz?.question_pinyin" class="text-2xl leading-relaxed text-slate-700"
+             x-text="quiz.question_pinyin"
+             :title="quiz.question_chinese"></div>
+
         <div class="grid grid-cols-2 gap-2">
-          <template x-for="opt in quiz?.options || []" :key="opt">
+          <template x-for="(opt, idx) in quiz?.options || []" :key="idx">
             <button @click="pickQuizOption(opt)" :disabled="quizChoice !== null"
                     class="px-4 py-3 rounded-lg border text-base font-medium transition-colors"
                     :class="
@@ -205,9 +217,11 @@
                             ? 'bg-red-50 border-red-500 text-red-800'
                             : 'bg-slate-50 border-slate-200 text-slate-500'
                     "
-                    x-text="opt"></button>
+                    :title="quiz?.option_pinyins ? quiz.option_pinyins[idx] : ''"
+                    x-text="quizShowPinyin && quiz?.option_pinyins ? quiz.option_pinyins[idx] : opt"></button>
           </template>
         </div>
+
         <div x-show="quizChoice !== null" x-cloak class="text-sm text-slate-700 border-t border-slate-100 pt-3">
           <span x-show="quizCorrect" class="font-medium text-green-700">Correct.</span>
           <span x-show="!quizCorrect" class="font-medium text-red-700">

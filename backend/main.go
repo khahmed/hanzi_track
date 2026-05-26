@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"hanzitrack/backend/agents"
 	"hanzitrack/backend/db"
@@ -65,11 +66,14 @@ func main() {
 	if key := os.Getenv("MUTATOR_API_KEY"); key != "" {
 		switch mutatorProvider {
 		case "anthropic":
-			registry.Register("mutator", llm.NewAnthropic(key))
+			registry.Register(mutatorProvider, llm.NewAnthropic(key))
 		case "openai":
-			registry.Register("mutator", llm.NewOpenAI(key))
+			registry.Register(mutatorProvider, llm.NewOpenAI(key))
 		case "deepseek":
-			registry.Register("mutator", llm.NewDeepSeek(key))
+			ds := llm.NewDeepSeek(key)
+			ds.HTTP.Timeout = 120 * time.Second
+			ds.JSONMode = false
+			registry.Register(mutatorProvider, ds)
 		default:
 			log.Printf("mutator: unknown provider %q, falling back to stub", mutatorProvider)
 		}

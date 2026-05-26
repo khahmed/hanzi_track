@@ -145,7 +145,7 @@ func (m *Mutator) Mutate(ctx context.Context, featureDesc string) (*MutationResu
 			System:      "You are a senior frontend engineer modifying a Chinese vocabulary tracker SPA. Output only valid JSON.",
 			Messages:    []llm.Message{{Role: llm.RoleUser, Content: currentPrompt}},
 			Temperature: 0.2,
-			MaxTokens:   4096,
+			MaxTokens:   16384,
 		}
 
 		resp, llmErr := client.Complete(ctx, llmReq)

@@ -44,6 +44,7 @@ function app() {
     quizChoice: null,
     quizCorrect: null,
     quizError: '',
+    quizShowPinyin: false,  // NEW: toggle pinyin display
 
     // Conversationalist pane state. chatMessages is the full thread in
     // chronological order; the assistant rows carry pinyin + coach_notes
@@ -172,6 +173,7 @@ function app() {
       this.quizChoice = null;
       this.quizCorrect = null;
       this.quizError = '';
+      this.quizShowPinyin = false;  // reset toggle
     },
 
     async loadAgentStats() {
@@ -318,6 +320,11 @@ function app() {
       if (!this.quiz) return ['', ''];
       const parts = this.quiz.question_chinese.split('____');
       return [parts[0] || '', parts.slice(1).join('____')];
+    },
+
+    // NEW: toggle pinyin display
+    toggleQuizPinyin() {
+      this.quizShowPinyin = !this.quizShowPinyin;
     },
 
     async generateQuiz() {

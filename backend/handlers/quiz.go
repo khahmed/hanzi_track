@@ -22,11 +22,14 @@ type Quiz struct {
 }
 
 // QuizQuestion mirrors the SPEC §6 JSON shape that the LLM is asked to
-// produce. The frontend renders this directly.
+// produce. The frontend renders this directly. QuestionPinyin and
+// OptionPinyins are optional — the frontend falls back to hanzi when absent.
 type QuizQuestion struct {
 	Structure       string   `json:"structure"`
 	QuestionChinese string   `json:"question_chinese"`
+	QuestionPinyin  string   `json:"question_pinyin,omitempty"`
 	Options         []string `json:"options"`
+	OptionPinyins   []string `json:"option_pinyins,omitempty"`
 	CorrectAnswer   string   `json:"correct_answer"`
 	VocabID         int64    `json:"vocab_id"`
 	Explanation     string   `json:"explanation"`
@@ -242,11 +245,14 @@ func buildQuizPrompt(category string, words []quizVocab) string {
 	b.WriteString(`{
   "structure": "<sentence-skeleton name>",
   "question_chinese": "<full sentence with ____ where the blank goes>",
+  "question_pinyin": "<question_chinese with all characters replaced by pinyin, e.g. ta xi3huan1 yi4bian1 ____ yi4bian1 ting1 yin1yue4>",
   "options": ["<correct hanzi>", "<distractor 1>", "<distractor 2>", "<distractor 3>"],
+  "option_pinyins": ["<option 0 in numeric pinyin>", "<option 1 in numeric pinyin>", "<option 2 in numeric pinyin>", "<option 3 in numeric pinyin>"],
   "correct_answer": "<exact match for the correct option>",
   "vocab_id": <integer id of the chosen vocab row>,
   "explanation": "<one-sentence explanation in English>"
 }`)
 	b.WriteString("\n\nAll four options must be distinct. correct_answer must equal one of the options exactly. vocab_id must come from the list.")
+	b.WriteString(" question_pinyin and option_pinyins are optional — omit them if the question doesn't have hanzi characters.")
 	return b.String()
 }

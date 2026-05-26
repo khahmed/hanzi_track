@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 )
@@ -46,11 +47,11 @@ type deepseekMessage struct {
 }
 
 type deepseekRequest struct {
-	Model          string            `json:"model"`
+	Model          string          `json:"model"`
 	Messages       []deepseekMessage `json:"messages"`
-	Temperature    float64           `json:"temperature,omitempty"`
-	MaxTokens      int               `json:"max_tokens,omitempty"`
-	ResponseFormat *responseFormat   `json:"response_format,omitempty"`
+	Temperature    float64         `json:"temperature,omitempty"`
+	MaxTokens      int             `json:"max_tokens,omitempty"`
+	ResponseFormat *responseFormat `json:"response_format,omitempty"`
 }
 
 type responseFormat struct {
@@ -126,9 +127,6 @@ func (d *DeepSeek) Complete(ctx context.Context, req Request) (Response, error) 
 	}
 
 	if resp.StatusCode >= 400 {
-		// DeepSeek returns a JSON error envelope on most failures, but we
-		// also surface the raw body for opaque upstream failures (502s from
-		// their edge).
 		var parsed deepseekResponse
 		_ = json.Unmarshal(raw, &parsed)
 		if parsed.Error != nil {
@@ -144,5 +142,9 @@ func (d *DeepSeek) Complete(ctx context.Context, req Request) (Response, error) 
 	if len(parsed.Choices) == 0 {
 		return Response{}, fmt.Errorf("deepseek: empty choices (body=%s)", string(raw))
 	}
-	return Response{Content: parsed.Choices[0].Message.Content}, nil
+	content := parsed.Choices[0].Message.Content
+	if content == "" {
+		log.Printf("deepseek: empty content in response body=%s", string(raw))
+	}
+	return Response{Content: content}, nil
 }
