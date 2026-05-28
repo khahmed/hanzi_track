@@ -73,17 +73,24 @@
 
   <section x-show="view === 'bank'" x-cloak>
     <div class="sticky top-0 bg-slate-50 z-10 p-3 border-b border-slate-200">
-      <div class="flex gap-2 overflow-x-auto no-scrollbar">
+      <div class="flex gap-2 overflow-x-auto no-scrollbar items-center">
         <button
           @click="selectFilter('')"
           :class="bankFilter === '' ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 border border-slate-300'"
           class="px-3 py-1.5 rounded-full text-sm whitespace-nowrap">All</button>
         <template x-for="cat in allCategories" :key="cat">
-          <button
-            @click="selectFilter(cat)"
-            :class="bankFilter === cat ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 border border-slate-300'"
-            class="px-3 py-1.5 rounded-full text-sm whitespace-nowrap"
-            x-text="cat"></button>
+          <div class="flex items-center gap-0.5">
+            <button
+              @click="selectFilter(cat)"
+              :class="bankFilter === cat ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 border border-slate-300'"
+              class="px-3 py-1.5 rounded-full text-sm whitespace-nowrap"
+              x-text="cat"></button>
+            <button @click.stop="renameCategory(cat)" class="text-slate-400 hover:text-blue-600 p-0.5" title="Rename category">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+              </svg>
+            </button>
+          </div>
         </template>
       </div>
     </div>
@@ -115,6 +122,12 @@
                 </div>
               </template>
             </div>
+          </div>
+          <!-- Edit categories button -->
+          <div class="border-t border-slate-100">
+            <button @click="openEditModal(v)" class="w-full text-left px-4 py-2.5 text-xs font-medium text-blue-600 hover:text-blue-800">
+              Edit categories
+            </button>
           </div>
         </li>
       </template>
@@ -292,7 +305,8 @@
           <div class="text-sm text-slate-600 mt-0.5" x-text="toneMark(modal.pinyin)"></div>
           <div class="text-sm text-slate-800 mt-1" x-text="modal.english"></div>
 
-          <h3 class="text-xs uppercase tracking-wide text-slate-500 font-semibold mt-5 mb-2">Tag with categories</h3>
+          <h3 class="text-xs uppercase tracking-wide text-slate-500 font-semibold mt-5 mb-2"
+              x-text="editWordId ? 'Edit categories' : 'Tag with categories'"></h3>
           <div x-show="allCategories.length === 0" class="text-xs text-slate-500 italic mb-2">
             No categories yet. Create one below.
           </div>
@@ -319,7 +333,7 @@
             <button @click="closeModal()" class="flex-1 px-4 py-3 rounded-xl bg-slate-100 text-slate-700 font-medium">Cancel</button>
             <button @click="save()" :disabled="saving"
                     class="flex-1 px-4 py-3 rounded-xl bg-blue-600 text-white font-medium disabled:opacity-50">
-              <span x-show="!saving">Save to Notebook</span>
+              <span x-show="!saving" x-text="editWordId ? 'Update' : 'Save to Notebook'"></span>
               <span x-show="saving">Saving…</span>
             </button>
           </div>

@@ -18,11 +18,12 @@ function app() {
     recent: [],
     allCategories: [],
 
-    // Save modal
+    // Save modal (also used for editing existing word categories)
     modal: null,
     modalCategories: [],
     newCategory: '',
     saving: false,
+    editWordId: null,  // set when editing an existing word
 
     // Bank
     bankFilter: '',
@@ -400,14 +401,26 @@ function app() {
     },
 
     openSaveModal(candidate) {
+      // Opens modal for saving a new word from dictionary search.
+      this.editWordId = null;
       this.modal = candidate;
       this.modalCategories = [];
       this.newCategory = '';
     },
+
+    openEditModal(word) {
+      // Opens modal for editing categories of an existing word from the bank.
+      this.editWordId = word.id;
+      this.modal = { hanzi: word.hanzi, pinyin: word.pinyin, english: word.english };
+      this.modalCategories = [...(word.categories || [])];
+      this.newCategory = '';
+    },
+
     closeModal() {
       this.modal = null;
       this.modalCategories = [];
       this.newCategory = '';
+      this.editWordId = null;
     },
 
     toggleCategory(name) {
@@ -428,30 +441,60 @@ function app() {
       if (!this.modal || this.saving) return;
       this.saving = true;
       try {
-        const r = await fetch('/api/vocab', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            hanzi: this.modal.hanzi,
-            pinyin: this.modal.pinyin,
-            english: this.modal.english,
-            categories: this.modalCategories,
-          }),
-        });
-        if (!r.ok) throw new Error('save HTTP ' + r.status);
-        const d = await r.json();
-        this.flashToast(d.created ? 'Saved to notebook' : 'Already in bank — categories merged');
+        if (this.editWordId) {
+          // Update existing word's categories
+          const r = await fetch('/api/vocab/' + this.editWordId, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ categories: this.modalCategories }),
+          });
+          if (!r.ok) throw new Error('update HTTP ' + r.status);
+          this.flashToast('Categories updated');
+        } else {
+          // Save new word
+          const r = await fetch('/api/vocab', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              hanzi: this.modal.hanzi,
+              pinyin: this.modal.pinyin,
+              english: this.modal.english,
+              categories: this.modalCategories,
+            }),
+          });
+          if (!r.ok) throw new Error('save HTTP ' + r.status);
+          const d = await r.json();
+          this.flashToast(d.created ? 'Saved to notebook' : 'Already in bank — categories merged');
+        }
         this.closeModal();
         this.searchQ = '';
         this.candidates = [];
         await Promise.all([this.loadCategories(), this.loadRecent()]);
-        // Bank view will refetch next time it's opened.
+        // Refresh bank if we are in bank view
         this._bankLoaded = false;
+        if (this.view === 'bank') await this.loadBank();
       } catch (e) {
-        this.flashToast('Save failed');
+        this.flashToast('Save failed: ' + e.message);
         console.error(e);
       } finally {
         this.saving = false;
+      }
+    },
+
+    async renameCategory(oldName) {
+      const newName = prompt(`Rename category "${oldName}" to:`, oldName);
+      if (!newName || newName === oldName) return;
+      try {
+        const r = await fetch('/api/categories/rename', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ old_name: oldName, new_name: newName }),
+        });
+        if (!r.ok) throw new Error('rename HTTP ' + r.status);
+        this.flashToast(`Category renamed to "${newName}"`);
+        await Promise.all([this.loadCategories(), this.loadBank()]);
+      } catch (e) {
+        this.flashToast('Rename failed: ' + e.message);
       }
     },
 
