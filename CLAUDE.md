@@ -55,3 +55,17 @@ HánzìTrack: a self-hosted Chinese vocabulary tracker. Mobile-first SPA backed 
 
 Don't skip phase 1 — autocomplete latency is the feature the rest of the UX depends on.
 
+## Agent skills
+
+### Issue tracker
+
+Issues live as markdown files under `.scratch/<feature-slug>/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary: needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context — one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
