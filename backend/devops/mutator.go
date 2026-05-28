@@ -212,7 +212,7 @@ func (m *Mutator) Mutate(ctx context.Context, featureDesc string) (*MutationResu
 	// Git pipeline.
 	setStatus("lint_passed", "")
 	var prURL string
-	if m.RepoDir != "" {
+	if m.repoDir() != "" {
 		prURL, err = m.runGitPipeline(ctx, featureDesc, branchName)
 		if err != nil {
 			// Git failure is not fatal — files are written and backed up.
