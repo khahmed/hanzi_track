@@ -29,6 +29,7 @@ function app() {
     bankFilter: '',
     bankResults: [],
     _bankLoaded: false,
+    cardExpanded: {},
 
     // Dynamic agent tabs. agents[] is populated from /api/agents on init.
     // When an agent tab is active, view === 'agent' and currentAgent holds
@@ -515,6 +516,15 @@ function app() {
         this.flashToast('Failed to load bank');
         console.error(e);
       }
+    },
+
+    toggleCardExpanded(id, field) {
+      if (!this.cardExpanded[id]) this.cardExpanded[id] = {};
+      this.cardExpanded[id][field] = !this.cardExpanded[id][field];
+    },
+
+    isCardExpanded(id, field) {
+      return this.cardExpanded[id]?.[field] ?? false;
     },
 
     selectFilter(cat) {
