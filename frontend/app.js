@@ -245,13 +245,16 @@ function app() {
     closeCockpit() {
       this.cockpitOpen = false;
     },
+    clearFeatureDraft() {
+      this.featureDraft = '';
+    },
 
     async submitFeature() {
       const desc = this.featureDraft.trim();
       if (!desc || this.cockpitRunning) return;
       this.cockpitRunning = true;
       this.cockpitLogs = [];
-      this.featureDraft = '';
+      // NOT clearing featureDraft anymore – user can clear manually via Clear button
       try {
         const r = await fetch('/api/devops/mutate', {
           method: 'POST',
