@@ -121,6 +121,12 @@ System prompts are stored in the `system_agents` table and can be modified at ru
 
 Example sentences are fetched from Tatoeba in the background after saving.
 
+### Managing categories
+
+Each vocab card in the bank view has an **Edit categories** button that opens the category modal, letting you add or remove categories for that word.
+
+Next to each category pill in the filter bar there's a rename icon (pencil). Click it to rename a category across the entire vocabulary bank. The rename updates every word tagged with that category.
+
 ### Taking quizzes (Quizmaster)
 
 Switch to the **Quizmaster** tab, optionally pick a category, and press **Generate question**. Each question presents a structural fill-in-the-blank sentence (e.g., 一边...一边...). After answering, the result is logged to `review_logs` for the Orchestrator.

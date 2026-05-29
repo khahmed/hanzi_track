@@ -46,6 +46,8 @@ HánzìTrack: a self-hosted Chinese vocabulary tracker. Mobile-first SPA backed 
 - `POST /api/vocab` — body `{ hanzi, pinyin, english, categories: [...] }`. Saves + kicks off sentence fetch.
 - `GET /api/vocab` — supports `?category=` and `?search=` filters.
 - `GET /api/categories` — list of category names.
+- `PUT /api/categories/rename` — body `{ old_name, new_name }`. Renames a category across the bank.
+- `PUT /api/vocab/{id}` — body `{ categories: [...] }`. Replaces category associations for a word.
 
 ## Phasing
 
