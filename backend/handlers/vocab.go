@@ -345,3 +345,127 @@ func (v *Vocab) launchSentenceWorker(vocabID int64, hanzi string) {
 		}
 	}()
 }
+
+
+type updateCategoriesRequest struct {
+	Categories []string `json:"categories"`
+}
+
+// UpdateCategories handles PUT /api/vocab/{id} — replaces the category
+// associations for a vocabulary entry. Expects { "categories": [...] } in
+// the request body. Creates new categories on the fly if they don't exist.
+func (v *Vocab) UpdateCategories(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	vocabID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid vocab id", http.StatusBadRequest)
+		return
+	}
+
+	var req updateCategoriesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+
+	tx, err := v.DB.BeginTx(r.Context(), nil)
+	if err != nil {
+		log.Printf("update categories begin tx: %v", err)
+		http.Error(w, "update failed", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
+
+	var exists int
+	if err := tx.QueryRowContext(r.Context(), "SELECT 1 FROM vocabulary WHERE id = ?", vocabID).Scan(&exists); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "vocab not found", http.StatusNotFound)
+			return
+		}
+		log.Printf("update categories check vocab: %v", err)
+		http.Error(w, "update failed", http.StatusInternalServerError)
+		return
+	}
+
+	if _, err := tx.ExecContext(r.Context(), "DELETE FROM vocab_categories WHERE vocab_id = ?", vocabID); err != nil {
+		log.Printf("update categories delete: %v", err)
+		http.Error(w, "update failed", http.StatusInternalServerError)
+		return
+	}
+
+	for _, name := range req.Categories {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		var catID int64
+		qerr := tx.QueryRowContext(r.Context(), "SELECT id FROM categories WHERE name = ?", name).Scan(&catID)
+		if errors.Is(qerr, sql.ErrNoRows) {
+			res, ierr := tx.ExecContext(r.Context(), "INSERT INTO categories (name) VALUES (?)", name)
+			if ierr != nil {
+				log.Printf("update categories create: %v", ierr)
+				http.Error(w, "update failed", http.StatusInternalServerError)
+				return
+			}
+			catID, _ = res.LastInsertId()
+		} else if qerr != nil {
+			log.Printf("update categories lookup: %v", qerr)
+			http.Error(w, "update failed", http.StatusInternalServerError)
+			return
+		}
+		if _, ierr := tx.ExecContext(r.Context(),
+			"INSERT INTO vocab_categories (vocab_id, category_id) VALUES (?, ?)", vocabID, catID); ierr != nil {
+			log.Printf("update categories insert: %v", ierr)
+			http.Error(w, "update failed", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		log.Printf("update categories commit: %v", err)
+		http.Error(w, "update failed", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	writeJSON(w, map[string]string{"status": "ok"})
+}
+
+type renameCategoryRequest struct {
+	OldName string `json:"old_name"`
+	NewName string `json:"new_name"`
+}
+
+// RenameCategory handles PUT /api/categories/rename — renames a category
+// across the entire vocabulary bank. Expects { "old_name": "...", "new_name": "..." }.
+func (v *Vocab) RenameCategory(w http.ResponseWriter, r *http.Request) {
+	var req renameCategoryRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+	req.OldName = strings.TrimSpace(req.OldName)
+	req.NewName = strings.TrimSpace(req.NewName)
+	if req.OldName == "" || req.NewName == "" {
+		http.Error(w, "old_name and new_name are required", http.StatusBadRequest)
+		return
+	}
+	if req.OldName == req.NewName {
+		writeJSON(w, map[string]string{"status": "ok"})
+		return
+	}
+
+	res, err := v.DB.ExecContext(r.Context(), "UPDATE categories SET name = ? WHERE name = ?", req.NewName, req.OldName)
+	if err != nil {
+		log.Printf("rename category: %v", err)
+		http.Error(w, "rename failed", http.StatusInternalServerError)
+		return
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		http.Error(w, "category not found", http.StatusNotFound)
+		return
+	}
+
+	writeJSON(w, map[string]string{"status": "ok"})
+}

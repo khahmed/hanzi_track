@@ -21,6 +21,8 @@
 <body class="bg-slate-50 text-slate-900 min-h-screen antialiased">
 <main x-data="app()" x-init="init()" class="max-w-xl mx-auto pb-20">
 
+  <div class="text-center text-xl font-bold text-slate-900 py-3">Hanzi Tracker</div>
+
   <section x-show="view === 'add'" x-cloak>
     <div class="sticky top-0 bg-slate-50 z-10 p-3 border-b border-slate-200">
       <input
@@ -73,29 +75,36 @@
 
   <section x-show="view === 'bank'" x-cloak>
     <div class="sticky top-0 bg-slate-50 z-10 p-3 border-b border-slate-200">
-      <div class="flex gap-2 overflow-x-auto no-scrollbar">
+      <div class="flex gap-2 overflow-x-auto no-scrollbar items-center">
         <button
           @click="selectFilter('')"
           :class="bankFilter === '' ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 border border-slate-300'"
           class="px-3 py-1.5 rounded-full text-sm whitespace-nowrap">All</button>
         <template x-for="cat in allCategories" :key="cat">
-          <button
-            @click="selectFilter(cat)"
-            :class="bankFilter === cat ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 border border-slate-300'"
-            class="px-3 py-1.5 rounded-full text-sm whitespace-nowrap"
-            x-text="cat"></button>
+          <div class="flex items-center gap-0.5">
+            <button
+              @click="selectFilter(cat)"
+              :class="bankFilter === cat ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 border border-slate-300'"
+              class="px-3 py-1.5 rounded-full text-sm whitespace-nowrap"
+              x-text="cat"></button>
+            <button @click.stop="renameCategory(cat)" class="text-slate-400 hover:text-blue-600 p-0.5" title="Rename category">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+              </svg>
+            </button>
+          </div>
         </template>
       </div>
     </div>
 
     <ul class="p-3 space-y-3">
       <template x-for="v in bankResults" :key="v.id">
-        <li x-data="{showEng: false, showSent: false}" class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <button @click="showEng = !showEng" class="w-full text-left p-4">
+        <li class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <button @click="toggleCardExpanded(v.id, 'showEng')" class="w-full text-left p-4">
             <div class="text-3xl font-bold leading-none" x-text="v.hanzi"></div>
             <div class="text-sm text-slate-600 mt-1.5" x-text="toneMark(v.pinyin)"></div>
-            <div x-show="showEng" class="text-base text-slate-800 mt-2" x-text="v.english"></div>
-            <div x-show="!showEng" class="text-xs text-slate-400 italic mt-1.5">tap to reveal</div>
+            <div x-show="isCardExpanded(v.id, 'showEng')" class="text-base text-slate-800 mt-2" x-text="v.english"></div>
+            <div x-show="!isCardExpanded(v.id, 'showEng')" class="text-xs text-slate-400 italic mt-1.5">tap to reveal</div>
             <div x-show="v.categories.length" class="flex flex-wrap gap-1 mt-2.5">
               <template x-for="cat in v.categories" :key="cat">
                 <span class="px-2 py-0.5 text-[11px] bg-slate-100 text-slate-700 rounded-full" x-text="cat"></span>
@@ -103,11 +112,11 @@
             </div>
           </button>
           <div x-show="v.sentences.length" class="border-t border-slate-100">
-            <button @click="showSent = !showSent" class="w-full text-left px-4 py-2.5 text-xs font-medium text-blue-600">
-              <span x-show="!showSent">Show <span x-text="v.sentences.length"></span> example<span x-show="v.sentences.length > 1">s</span></span>
-              <span x-show="showSent">Hide examples</span>
+            <button @click="toggleCardExpanded(v.id, 'showSent')" class="w-full text-left px-4 py-2.5 text-xs font-medium text-blue-600">
+              <span x-show="!isCardExpanded(v.id, 'showSent')">Show <span x-text="v.sentences.length"></span> example<span x-show="v.sentences.length > 1">s</span></span>
+              <span x-show="isCardExpanded(v.id, 'showSent')">Hide examples</span>
             </button>
-            <div x-show="showSent" class="px-4 pb-3 space-y-2">
+            <div x-show="isCardExpanded(v.id, 'showSent')" class="px-4 pb-3 space-y-2">
               <template x-for="(s, i) in v.sentences" :key="i">
                 <div class="text-sm">
                   <div class="text-slate-900" x-text="s.chinese"></div>
@@ -115,6 +124,12 @@
                 </div>
               </template>
             </div>
+          </div>
+          <!-- Edit categories button -->
+          <div class="border-t border-slate-100">
+            <button @click="openEditModal(v)" class="w-full text-left px-4 py-2.5 text-xs font-medium text-blue-600 hover:text-blue-800">
+              Edit categories
+            </button>
           </div>
         </li>
       </template>
@@ -292,7 +307,8 @@
           <div class="text-sm text-slate-600 mt-0.5" x-text="toneMark(modal.pinyin)"></div>
           <div class="text-sm text-slate-800 mt-1" x-text="modal.english"></div>
 
-          <h3 class="text-xs uppercase tracking-wide text-slate-500 font-semibold mt-5 mb-2">Tag with categories</h3>
+          <h3 class="text-xs uppercase tracking-wide text-slate-500 font-semibold mt-5 mb-2"
+              x-text="editWordId ? 'Edit categories' : 'Tag with categories'"></h3>
           <div x-show="allCategories.length === 0" class="text-xs text-slate-500 italic mb-2">
             No categories yet. Create one below.
           </div>
@@ -319,7 +335,7 @@
             <button @click="closeModal()" class="flex-1 px-4 py-3 rounded-xl bg-slate-100 text-slate-700 font-medium">Cancel</button>
             <button @click="save()" :disabled="saving"
                     class="flex-1 px-4 py-3 rounded-xl bg-blue-600 text-white font-medium disabled:opacity-50">
-              <span x-show="!saving">Save to Notebook</span>
+              <span x-show="!saving" x-text="editWordId ? 'Update' : 'Save to Notebook'"></span>
               <span x-show="saving">Saving…</span>
             </button>
           </div>
@@ -347,12 +363,18 @@
                 class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm resize-none"
                 rows="2"></textarea>
 
-      <button @click="submitFeature()" :disabled="cockpitRunning || !featureDraft.trim()"
-              class="w-full mt-2 px-4 py-2.5 rounded-xl font-medium text-sm"
-              :class="cockpitRunning ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'">
-        <span x-show="!cockpitRunning">Build it</span>
-        <span x-show="cockpitRunning">Building…</span>
-      </button>
+      <div class="flex gap-2 mt-2">
+        <button @click="submitFeature()" :disabled="cockpitRunning || !featureDraft.trim()"
+                class="flex-1 px-4 py-2.5 rounded-xl font-medium text-sm"
+                :class="cockpitRunning ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'">
+          <span x-show="!cockpitRunning">Build it</span>
+          <span x-show="cockpitRunning">Building…</span>
+        </button>
+        <button @click="clearFeatureDraft()" :disabled="cockpitRunning || !featureDraft.trim()"
+                class="px-4 py-2.5 rounded-xl bg-blue-500 text-white hover:bg-blue-600 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+          Clear
+        </button>
+      </div>
 
       <!-- Terminal log -->
       <div id="cockpit-log"

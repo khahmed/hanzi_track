@@ -98,6 +98,8 @@ func main() {
 	mux.HandleFunc("POST /api/vocab", vocab.Post)
 	mux.HandleFunc("GET /api/vocab", vocab.List)
 	mux.HandleFunc("GET /api/categories", vocab.Categories)
+	mux.HandleFunc("PUT /api/categories/rename", vocab.RenameCategory)
+	mux.HandleFunc("PUT /api/vocab/{id}", vocab.UpdateCategories)
 	mux.HandleFunc("GET /api/agents", handlers.ListAgents(database))
 	mux.HandleFunc("GET /api/agents/quiz", quiz.Generate)
 	mux.HandleFunc("POST /api/agents/quiz/submit", quiz.Submit)
